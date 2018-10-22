@@ -8,6 +8,8 @@ import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Objects;
 
 import android.app.Activity;
@@ -42,9 +44,13 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.util.TreeMap;
 
 public class MainActivity extends Activity{
 
+    int countvalue = 1;
+    JSONObject jmusic = new JSONObject();
+    private Map<String,String> timeList = new TreeMap<String, String>();
     private final int mBufferSize = 1024;
     private final int mBytesPerElement = 2;
 // 설정할 수 있는 sampleRate, AudioFormat, channelConfig 값들을 정의
@@ -53,7 +59,7 @@ public class MainActivity extends Activity{
     private final short[] mAudioFormats = new short[]{AudioFormat.ENCODING_PCM_16BIT, AudioFormat.ENCODING_PCM_8BIT};
     private final short[] mChannelConfigs = new short[]{AudioFormat.CHANNEL_IN_STEREO, AudioFormat.CHANNEL_IN_MONO};
 
-// 위의 값들 중 실제 녹음 및 재생 시 선택된 설정값들을 저장
+    // 위의 값들 중 실제 녹음 및 재생 시 선택된 설정값들을 저장
     private String result="";
     private int mSampleRate;
     private short mAudioFormat;
@@ -64,7 +70,45 @@ public class MainActivity extends Activity{
     private TextView tv;
     private boolean mIsRecording = false;           // 녹음 중인지에 대한 상태값
     private String mPath = "";// 녹음한 파일을 저장할 경로
+    public void printLog(){
+        Log.d("jsontest",timeList.size()+"" );
+        MediaType JSON = MediaType.parse("application/json; charset=utf-8");
+        JSONObject jobj = new JSONObject();
+        //JSONObject jmusic = new JSONObject();
+        //JSONObject jmusic2 = new JSONObject();
 
+        OkHttpClient client = new OkHttpClient();
+        try {
+            Log.d("jointest",timeList.toString());
+            //jmusic.put("0:00:1", "4");
+            //jmusic2.put("0:00:1", "4");
+            jobj.put("music",jmusic);
+            // Log.d("jsontest 2 ",timeList.get(2));
+
+            Log.d("jsontest",jobj.toString());
+            //jobj.put("music2", jmusic2);
+        }
+        catch(JSONException e){
+
+        }
+                        /*HttpUrl thhpUrl = new HttpUrl.Builder()
+                                .scheme("http")
+                                .host("52.78.60.235:9090")
+                                .addPathSegment("piano/score/a")
+                                .build();*/
+
+        RequestBody requestBody = RequestBody.create(
+                (JSON) , jobj+"");
+
+        Request request = new Request.Builder()
+                //.url("http://52.78.60.235:9090/piano/score/a")
+                .url("http://192.168.0.23:9090/piano/score/a")
+                .post(requestBody)
+                .addHeader("content-type","application/json; charset=utf-8")
+                .build();
+
+        client.newCall(request).enqueue(updateUserInfoCallback);
+    }
     //Thread th = new Thread(MainActivity.this);
     private View.OnClickListener btnClick = new View.OnClickListener() {
 
@@ -81,6 +125,7 @@ public class MainActivity extends Activity{
                     } else {
                         stopRecording();
                         mIsRecording = false;
+                        printLog();
                         mRecordBtn.setText("Start Recording");
                     }
                     break;
@@ -132,7 +177,7 @@ public class MainActivity extends Activity{
                     playWaveFile();
                     break;
             }
-            }
+        }
 
     };
     private Callback updateUserInfoCallback = new Callback() {
@@ -255,7 +300,7 @@ public class MainActivity extends Activity{
             }
         }, "AudioRecorder Thread");
         mRecordingThread.start();
-        }
+    }
 
 
     // 녹음을 하기 위한 sampleRate, audioFormat, channelConfig 값들을 설정
@@ -304,39 +349,39 @@ public class MainActivity extends Activity{
         return (int)frequency;
     }*/
 
-   public double[] calculateFFT(byte[] bData)
-   {
-       double mMaxFFTSample;
+    public double[] calculateFFT(byte[] bData)
+    {
+        double mMaxFFTSample;
 
-       double temp;
-       Complex[] y;
-       Complex[] complexSignal = new Complex[mBufferSize];
-       double[] absSignal = new double[mBufferSize/2];
+        double temp;
+        Complex[] y;
+        Complex[] complexSignal = new Complex[mBufferSize];
+        double[] absSignal = new double[mBufferSize/2];
 
-       for(int i = 0; i < mBufferSize; i++){
-           temp = (double)((bData[2*i] & 0xFF) | (bData[2*i+1] << 8)) / 32768.0F;
-           complexSignal[i] = new Complex(temp,0.0);
-       }
+        for(int i = 0; i < mBufferSize; i++){
+            temp = (double)((bData[2*i] & 0xFF) | (bData[2*i+1] << 8)) / 32768.0F;
+            complexSignal[i] = new Complex(temp,0.0);
+        }
 
-       y = FFT.fft(complexSignal); // --> Here I use FFT class
+        y = FFT.fft(complexSignal); // --> Here I use FFT class
 
-       mMaxFFTSample = 0.0;
-       int mPeakPos = 0;
-       for(int i = 0; i < (mBufferSize/2); i++)
-       {
-           absSignal[i] = Math.sqrt(Math.pow(y[i].re(), 2) + Math.pow(y[i].im(), 2));
-           if(absSignal[i] > mMaxFFTSample)
-           {
-               mMaxFFTSample = absSignal[i];
+        mMaxFFTSample = 0.0;
+        int mPeakPos = 0;
+        for(int i = 0; i < (mBufferSize/2); i++)
+        {
+            absSignal[i] = Math.sqrt(Math.pow(y[i].re(), 2) + Math.pow(y[i].im(), 2));
+            if(absSignal[i] > mMaxFFTSample)
+            {
+                mMaxFFTSample = absSignal[i];
 
-               mPeakPos = i;
-           }
-       }
-       Log.d(String.valueOf(mMaxFFTSample),"maxfft");
+                mPeakPos = i;
+            }
+        }
+        Log.d(String.valueOf(mMaxFFTSample),"maxfft");
 
-       return absSignal;
+        return absSignal;
 
-   }
+    }
 
     // 실제 녹음한 data를 file에 쓰는 함수
     private void writeAudioDataToFile() {
@@ -354,11 +399,28 @@ public class MainActivity extends Activity{
                 fos.write(bData, 0, mBufferSize * mBytesPerElement);
                 read=mRecorder.read(bData,0,mBufferSize * mBytesPerElement);
 
-                    Log.d(String.valueOf(bData), "bData");
+                Log.d(String.valueOf(bData), "bData");
 
                 if(read>0) {
                     double[] absNormalizedSignal = calculateFFT(bData);
-                  //  for(int i=0;i<absNormalizedSignal.length;i++) {
+                    if(countvalue==0){
+                        Log.d("jsontest","success");
+                    }
+                    for(int i=0;i<absNormalizedSignal.length;i++){
+                        //if(max<absNormalizedSignal[i]){
+                        //  max=absNormalizedSignal[i];
+                        //}
+                        try{
+
+                            jmusic.put(String.valueOf(countvalue),String.valueOf(absNormalizedSignal[i]));
+                        }
+                        catch (Exception e){
+
+                        }
+                        timeList.put(String.valueOf(countvalue),String.valueOf(absNormalizedSignal[i]));
+                        countvalue++;
+                    }
+                    //  for(int i=0;i<absNormalizedSignal.length;i++) {
                     //    Log.d(String.valueOf((int)(absNormalizedSignal[i])),"hihihihi");
                     //}
                     Log.d(String.valueOf(absNormalizedSignal.length),"lengthsize");
@@ -374,7 +436,7 @@ public class MainActivity extends Activity{
     }
 
 
-// short array형태의 data를 byte array형태로 변환하여 반환하는 함수
+    // short array형태의 data를 byte array형태로 변환하여 반환하는 함수
     private byte[] short2byte(short[] sData) {
         int shortArrsize = sData.length;
         byte[] bytes = new byte[shortArrsize * 2];
