@@ -1,5 +1,13 @@
 package com.example.ghgus.audioexample2;
 
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
+import java.io.OutputStreamWriter;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.util.Objects;
 
 import android.app.Activity;
@@ -13,9 +21,21 @@ import android.os.Environment;
 import android.util.Log;
 import android.view.KeyEvent;
 import android.view.View;
+import android.view.textclassifier.TextLinks;
 import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
+
+import com.squareup.okhttp.Callback;
+import com.squareup.okhttp.HttpUrl;
+import com.squareup.okhttp.MediaType;
+import com.squareup.okhttp.OkHttpClient;
+import com.squareup.okhttp.Request;
+import com.squareup.okhttp.RequestBody;
+import com.squareup.okhttp.Response;
+
+import org.json.JSONException;
+import org.json.JSONObject;
 
 import java.io.DataInputStream;
 import java.io.FileInputStream;
@@ -23,7 +43,7 @@ import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 
-public class MainActivity extends Activity {
+public class MainActivity extends Activity{
 
     private final int mBufferSize = 1024;
     private final int mBytesPerElement = 2;
@@ -34,7 +54,7 @@ public class MainActivity extends Activity {
     private final short[] mChannelConfigs = new short[]{AudioFormat.CHANNEL_IN_STEREO, AudioFormat.CHANNEL_IN_MONO};
 
 // 위의 값들 중 실제 녹음 및 재생 시 선택된 설정값들을 저장
-
+    private String result="";
     private int mSampleRate;
     private short mAudioFormat;
     private short mChannelConfig;
@@ -43,18 +63,16 @@ public class MainActivity extends Activity {
     private Button mRecordBtn, mPlayBtn;
     private TextView tv;
     private boolean mIsRecording = false;           // 녹음 중인지에 대한 상태값
-    private String mPath = "";                      // 녹음한 파일을 저장할 경로
+    private String mPath = "";// 녹음한 파일을 저장할 경로
+
+    //Thread th = new Thread(MainActivity.this);
     private View.OnClickListener btnClick = new View.OnClickListener() {
 
-
         @Override
-
         public void onClick(View v) {
 
             switch (v.getId()) {
-
 // 녹음 버튼일 경우 녹음 중이지 않을 때는 녹음 시작, 녹음 중일 때는 녹음 중지로 텍스트 변경
-
                 case R.id.start:
                     if (mIsRecording == false) {
                         startRecording();
@@ -70,11 +88,44 @@ public class MainActivity extends Activity {
                 case R.id.play:
 
 // 녹음 파일이 없는 상태에서 재생 버튼 클릭 시, 우선 녹음부터 하도록 Toast 표시
-
                     if (mPath.length() == 0 || mIsRecording) {
+                        //th.start();
+                        MediaType JSON = MediaType.parse("application/json; charset=utf-8");
+                        JSONObject jobj = new JSONObject();
+                        JSONObject jmusic = new JSONObject();
+                        JSONObject jmusic2 = new JSONObject();
+                        OkHttpClient client = new OkHttpClient();
+                        try {
+
+                            jmusic.put("0:00:1", "4");
+                            jmusic2.put("0:00:1", "4");
+                            jobj.put("music", jmusic);
+                            jobj.put("music2", jmusic2);
+                        }
+                        catch(JSONException e){
+
+                        }
+                        /*HttpUrl thhpUrl = new HttpUrl.Builder()
+                                .scheme("http")
+                                .host("52.78.60.235:9090")
+                                .addPathSegment("piano/score/a")
+                                .build();*/
+
+                        RequestBody requestBody = RequestBody.create(
+                                (JSON) , jobj.toString());
+
+                        Request request = new Request.Builder()
+                                .url("http://52.78.60.235:9090/piano/score/a")
+                                .post(requestBody)
+                                .addHeader("content-type","application/json; charset=utf-8")
+                                .build();
+
+                        client.newCall(request).enqueue(updateUserInfoCallback);
+
+
+
                         Toast.makeText(MainActivity.this, "Please record, first.", Toast.LENGTH_SHORT).show();
                         return;
-
                     }
 
 // 녹음된 파일이 있는 경우 해당 파일 재생
@@ -84,8 +135,20 @@ public class MainActivity extends Activity {
             }
 
     };
+    private Callback updateUserInfoCallback = new Callback() {
+        @Override
+        public void onFailure(Request request, IOException e) {
+            Log.d("Testis", "Error message:" + e.getMessage());
+        }
 
-// 녹음을 수행할 Thread를 생성하여 녹음을 수행하는 함수
+        @Override
+        public void onResponse(Response response) throws IOException {
+            final String responseData = response.body().string();
+            Log.d("Testis", "responseData" + responseData);
+
+        }
+    };
+
 
     @Override
 // Layout을 연결하고 각 Button의 OnClickListener를 연결
@@ -97,11 +160,89 @@ public class MainActivity extends Activity {
         mPlayBtn = (Button) findViewById(R.id.play);
         mRecordBtn.setOnClickListener(btnClick);
         mPlayBtn.setOnClickListener(btnClick);
+
     }
 
 
-// 녹음을 하기 위한 sampleRate, audioFormat, channelConfig 값들을 설정
+ /*   @Override
+    public void run(){
+        try {
+                String request = "http://52.78.60.235:9090/piano/score/a";
+                Log.d("Testisgood3", "된다");
+                URL url = new URL("http://52.78.60.235:9090/piano/score/a");
+                BufferedReader reader = null;
+                HttpURLConnection httpCon = (HttpURLConnection) url.openConnection();
 
+                InputStream is;
+
+                JSONObject jobj = new JSONObject();
+                JSONObject jmusic = new JSONObject();
+                JSONObject jmusic2 = new JSONObject();
+
+                jmusic.put("0:00:1", "4");
+                jmusic2.put("0:00:1", "4");
+                jobj.put("music", jmusic);
+                jobj.put("music2", jmusic2);
+
+                httpCon.setRequestMethod("POST");
+                //httpCon.setRequestProperty("Accept-Charset","UTF-8");
+                httpCon.setRequestProperty("Content-type", "application/json");
+                //httpCon.setRequestProperty("Accept","application/json");
+
+                httpCon.setUseCaches(false);
+                httpCon.setConnectTimeout(3000);
+                httpCon.setReadTimeout(3000);
+
+                Log.d("Testisgood4", jobj.toString());
+
+                httpCon.setDoOutput(true);
+
+                Log.d("Testisgood4", "5번째됩니다.");
+                //httpCon.setDoInput(true);
+
+                Log.d("Testisgood4", "6번째됩니다.");
+                //httpCon.connect();
+
+                Log.d("Testisgood4", "7번째됩니다.");
+                OutputStream os = null;
+                os = httpCon.getOutputStream();
+
+                Log.d("Testisgood4", "8번째됩니다.");
+                BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(os));
+
+                Log.d("Testisgood4", "9번째됩니다.");
+                writer.write(jobj.toString());
+
+                Log.d("Testisgood4", "10번째됩니다.");
+                writer.flush();
+                writer.close();
+
+                is = httpCon.getInputStream();
+                if (is != null) {
+                    reader = new BufferedReader(new InputStreamReader(is));
+                    String a;
+                    while ((a = reader.readLine()) != null) {
+                        result += a;
+                    }
+                } else {
+                    result = "Did not work!";
+                }
+
+        }
+        catch (IOException e){
+            e.printStackTrace();
+        }
+        catch(Exception e){
+            Log.d("InputStream",e.getLocalizedMessage());
+        }
+
+            tv.setText(result);
+        th.stop();
+
+
+    }*/
+
+    // 녹음을 수행할 Thread를 생성하여 녹음을 수행하는 함수
     private void startRecording() {
         mRecorder = findAudioRecord();
 
@@ -116,7 +257,8 @@ public class MainActivity extends Activity {
         mRecordingThread.start();
         }
 
-// 실제 녹음한 data를 file에 쓰는 함수
+
+    // 녹음을 하기 위한 sampleRate, audioFormat, channelConfig 값들을 설정
     private AudioRecord findAudioRecord() {
         for (int rate : mSampleRates) {
             for (short format : mAudioFormats) {
@@ -161,6 +303,7 @@ public class MainActivity extends Activity {
 
         return (int)frequency;
     }*/
+
    public double[] calculateFFT(byte[] bData)
    {
        double mMaxFFTSample;
@@ -194,7 +337,8 @@ public class MainActivity extends Activity {
        return absSignal;
 
    }
-// short array형태의 data를 byte array형태로 변환하여 반환하는 함수
+
+    // 실제 녹음한 data를 file에 쓰는 함수
     private void writeAudioDataToFile() {
         String sd = Environment.getExternalStorageDirectory().getAbsolutePath();
         mPath = sd + "/record_audiorecord.pcm";
@@ -230,7 +374,7 @@ public class MainActivity extends Activity {
     }
 
 
-// 녹음을 중지하는 함수
+// short array형태의 data를 byte array형태로 변환하여 반환하는 함수
     private byte[] short2byte(short[] sData) {
         int shortArrsize = sData.length;
         byte[] bytes = new byte[shortArrsize * 2];
@@ -242,7 +386,7 @@ public class MainActivity extends Activity {
         return bytes;
     }
 
-// 녹음할 때 설정했던 값과 동일한 설정값들로 해당 파일을 재생하는 함수
+    // 녹음을 중지하는 함수
     private void stopRecording() {
         if (mRecorder != null) {
             mIsRecording = false;
@@ -253,6 +397,7 @@ public class MainActivity extends Activity {
         }
     }
 
+    // 녹음할 때 설정했던 값과 동일한 설정값들로 해당 파일을 재생하는 함수
     private void playWaveFile() {
 
         int minBufferSize = AudioTrack.getMinBufferSize(mSampleRate, mChannelConfig, mAudioFormat);
