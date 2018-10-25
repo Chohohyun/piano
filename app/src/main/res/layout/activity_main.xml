@@ -33,6 +33,13 @@
             android:layout_margin="5dp"
             android:padding="5dp"
             android:text="Play" />
+        <Button
+            android:id="@+id/test"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:padding="5dp"
+            android:text="Musicxml"
+            tools:layout_editor_absoluteX="5dp" />
     </LinearLayout>
 
 

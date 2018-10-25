@@ -1,18 +1,9 @@
 package com.example.ghgus.audioexample2;
 
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.OutputStream;
-import java.io.OutputStreamWriter;
-import java.net.HttpURLConnection;
-import java.net.URL;
-import java.util.HashMap;
 import java.util.Map;
-import java.util.Objects;
 
 import android.app.Activity;
+import android.content.Intent;
 import android.media.AudioFormat;
 import android.media.AudioManager;
 import android.media.AudioRecord;
@@ -23,13 +14,12 @@ import android.os.Environment;
 import android.util.Log;
 import android.view.KeyEvent;
 import android.view.View;
-import android.view.textclassifier.TextLinks;
+import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import com.squareup.okhttp.Callback;
-import com.squareup.okhttp.HttpUrl;
 import com.squareup.okhttp.MediaType;
 import com.squareup.okhttp.OkHttpClient;
 import com.squareup.okhttp.Request;
@@ -66,7 +56,7 @@ public class MainActivity extends Activity{
     private short mChannelConfig;
     private AudioRecord mRecorder = null;
     private Thread mRecordingThread = null;
-    private Button mRecordBtn, mPlayBtn;
+    private Button mRecordBtn, mPlayBtn, mMusicBtn;
     private TextView tv;
     private boolean mIsRecording = false;           // 녹음 중인지에 대한 상태값
     private String mPath = "";// 녹음한 파일을 저장할 경로
@@ -110,12 +100,14 @@ public class MainActivity extends Activity{
         client.newCall(request).enqueue(updateUserInfoCallback);
     }
     //Thread th = new Thread(MainActivity.this);
+
     private View.OnClickListener btnClick = new View.OnClickListener() {
 
         @Override
         public void onClick(View v) {
 
             switch (v.getId()) {
+
 // 녹음 버튼일 경우 녹음 중이지 않을 때는 녹음 시작, 녹음 중일 때는 녹음 중지로 텍스트 변경
                 case R.id.start:
                     if (mIsRecording == false) {
@@ -176,6 +168,10 @@ public class MainActivity extends Activity{
 // 녹음된 파일이 있는 경우 해당 파일 재생
                     playWaveFile();
                     break;
+                case R.id.test:
+                    Intent intent = new Intent(MainActivity.this,MusicActivity.class);
+                    startActivity(intent);
+
             }
         }
 
@@ -199,13 +195,16 @@ public class MainActivity extends Activity{
 // Layout을 연결하고 각 Button의 OnClickListener를 연결
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
+                WindowManager.LayoutParams.FLAG_FULLSCREEN);
         setContentView(R.layout.activity_main);
         tv = (TextView) findViewById(R.id.textView);
         mRecordBtn = (Button) findViewById(R.id.start);
         mPlayBtn = (Button) findViewById(R.id.play);
         mRecordBtn.setOnClickListener(btnClick);
         mPlayBtn.setOnClickListener(btnClick);
-
+        mMusicBtn=(Button) findViewById(R.id.test);
+        mMusicBtn.setOnClickListener(btnClick);
     }
 
 
@@ -373,14 +372,11 @@ public class MainActivity extends Activity{
             if(absSignal[i] > mMaxFFTSample)
             {
                 mMaxFFTSample = absSignal[i];
-
                 mPeakPos = i;
             }
         }
         Log.d(String.valueOf(mMaxFFTSample),"maxfft");
-
         return absSignal;
-
     }
 
     // 실제 녹음한 data를 file에 쓰는 함수
