@@ -123,7 +123,6 @@ public class MainActivity extends Activity{
                     break;
 
                 case R.id.play:
-
 // 녹음 파일이 없는 상태에서 재생 버튼 클릭 시, 우선 녹음부터 하도록 Toast 표시
                     if (mPath.length() == 0 || mIsRecording) {
                         //th.start();
