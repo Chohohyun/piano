@@ -61,9 +61,8 @@ public class MusicActivity extends Activity{
     private Button mRecordBtn, mPlayBtn, mMusicBtn;
     private TextView tv;
     private boolean mIsRecording = false;           // 녹음 중인지에 대한 상태값
-    private String sd = Environment.getExternalStorageDirectory().getAbsolutePath();
 
-    private String mPath = sd + "/record_audiorecord.pcm";// 녹음한 파일을 저장할 경로
+    private String mPath = null;
     private FileOutputStream fos = null;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -148,20 +147,23 @@ public class MusicActivity extends Activity{
     // 실제 녹음한 data를 file에 쓰는 함수
     private void writeAudioDataToFile() {
 
+        String sd = Environment.getExternalStorageDirectory().getAbsolutePath();
+        mPath= sd + "/record_audiorecord.pcm";// 녹음한 파일을 저장할 경로
         short sData[] = new short[mBufferSize];
+
         try {
 
             fos = new FileOutputStream(mPath);
             while (mIsRecording && valueReset == false) {
 
-                int read =0;
+                //int read =0;
                 mRecorder.read(sData, 0, mBufferSize);
                 byte bData[] = short2byte(sData);
                // fos.write(bData, 0, mBufferSize * mBytesPerElement);
                 //read=mRecorder.read(bData,0,mBufferSize * mBytesPerElement);
 
                  fos.write(bData, 0, mBufferSize * mBytesPerElement);
-                read=mRecorder.read(bData,0,mBufferSize * mBytesPerElement);
+               // read=mRecorder.read(bData,0,mBufferSize * mBytesPerElement);
 
 
                /* if(read>0) {
@@ -314,26 +316,52 @@ public class MusicActivity extends Activity{
     private void playWaveFile() {
 
         int minBufferSize = AudioTrack.getMinBufferSize(mSampleRate, mChannelConfig, mAudioFormat);
+
         AudioTrack audioTrack = new AudioTrack(AudioManager.STREAM_VOICE_CALL, mSampleRate, mChannelConfig, mAudioFormat, minBufferSize, AudioTrack.MODE_STREAM);
+
         int count = 0;
+
         byte[] data = new byte[mBufferSize];
 
+
+
         try {
+
             FileInputStream fis = new FileInputStream(mPath);
+
             DataInputStream dis = new DataInputStream(fis);
+
             audioTrack.play();
+
+
+
             while ((count = dis.read(data, 0, mBufferSize)) > -1) {
+
                 audioTrack.write(data, 0, count);
+
             }
+
             audioTrack.stop();
+
             audioTrack.release();
+
             dis.close();
+
             fis.close();
+
         } catch (FileNotFoundException e) {
+
             e.printStackTrace();
+
         } catch (IOException e) {
+
             e.printStackTrace();
+
         }
+
     }
+
+
+
 }
 
