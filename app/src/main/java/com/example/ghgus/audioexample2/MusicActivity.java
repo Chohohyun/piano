@@ -17,7 +17,6 @@ import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
 import android.widget.Button;
-import android.widget.FrameLayout;
 import android.widget.MediaController;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -25,29 +24,39 @@ import android.widget.VideoView;
 
 import org.json.JSONObject;
 
+import java.io.BufferedReader;
 import java.io.DataInputStream;
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
+import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.IOException;
+import java.util.Arrays;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.TreeMap;
+import java.util.Vector;
 
 public class MusicActivity extends Activity{
 
     MediaController mc;
-    VideoView vv;
+    MyVideoView vv;
     boolean valueReset = false;
+    boolean endValue = false;
     int countvalue = 1;
-    private Map<String,String> timeList = new TreeMap<String, String>();
+    private int average=0;
+    private Vector<Integer> vecList = new Vector<>();
+    private Vector<Integer> vecList2 = new Vector<>();
+
     private final int mBufferSize = 1024;
     private final int mBytesPerElement = 2;
-    JSONObject jmusic = new JSONObject();
 // 설정할 수 있는 sampleRate, AudioFormat, channelConfig 값들을 정의
 
     private final int[] mSampleRates = new int[] {44100, 22050, 11025, 8000};
     private final short[] mAudioFormats = new short[] {AudioFormat.ENCODING_PCM_16BIT, AudioFormat.ENCODING_PCM_8BIT};
-    private final short[] mChannelConfigs = new short[] {AudioFormat.CHANNEL_IN_STEREO, AudioFormat.CHANNEL_IN_MONO};
+    private final short[] mChannelConfigs = new short[] { AudioFormat.CHANNEL_IN_STEREO,AudioFormat.CHANNEL_IN_MONO};
 
 
 
@@ -61,7 +70,7 @@ public class MusicActivity extends Activity{
     private Button mRecordBtn, mPlayBtn, mMusicBtn;
     private TextView tv;
     private boolean mIsRecording = false;           // 녹음 중인지에 대한 상태값
-
+    private int musicNumber;
     private String mPath = null;
     private FileOutputStream fos = null;
     @Override
@@ -73,6 +82,8 @@ public class MusicActivity extends Activity{
 
         requestWindowFeature(Window.FEATURE_NO_TITLE);
         setContentView(R.layout.activity_music);
+        Intent intent = getIntent();
+        musicNumber = intent.getIntExtra("musicNumber",0);
         Log.d("여기까진","된다");
         setting();
 
@@ -80,9 +91,23 @@ public class MusicActivity extends Activity{
             @Override
             public void onCompletion(MediaPlayer mp) {
                 Toast.makeText(getApplicationContext(),"hi",Toast.LENGTH_LONG).show();
+                endValue=true;
                 valueReset=true;
                 stopRecording();
-                playWaveFile();
+
+                //playWaveFile();
+                //if((Environment.getExternalStorageDirectory().getPath()+"/answerRecord.txt").length() == 0) {
+                    //recordSoundWrite();
+                //}
+                //else{
+                    fileCompare();
+               // }
+                Log.d("recordertest","successs");
+
+                //Toast.makeText(getApplicationContext(),average,Toast.LENGTH_LONG).show();
+                Intent intent3 = new Intent(MusicActivity.this,ResultActivity.class);
+                intent3.putExtra("musicScore",average);
+                startActivityForResult(intent3,10);
             }
         });
     }//확인 버튼 클릭
@@ -97,9 +122,21 @@ public class MusicActivity extends Activity{
     }
     public void setting(){
 
-        vv = (VideoView) findViewById(R.id.vv);
+        vv = (MyVideoView) findViewById(R.id.vv);
         mc= new MediaController(MusicActivity.this);
-        String path="android.resource://"+getPackageName()+"/"+R.raw.piano;
+        String path="";
+        switch (musicNumber){
+            case 1:
+                path = "android.resource://" + getPackageName() + "/" + R.raw.gom3;
+                break;
+            case 2:
+                path = "android.resource://" + getPackageName() + "/" + R.raw.school;
+                break;
+            case 3:
+                path = "android.resource://" + getPackageName() + "/" + R.raw.star;
+        }
+
+
         Uri uri = Uri.parse(path);
         mc.setVisibility(View.GONE);
         vv.setMediaController(mc);
@@ -120,6 +157,7 @@ public class MusicActivity extends Activity{
         }, "AudioRecorder Thread");
         mRecordingThread.start();
     }
+
     // 녹음을 하기 위한 sampleRate, audioFormat, channelConfig 값들을 설정
     private AudioRecord findAudioRecord() {
         for (int rate : mSampleRates) {
@@ -131,7 +169,9 @@ public class MusicActivity extends Activity{
                             mSampleRate = rate;
                             mAudioFormat = format;
                             mChannelConfig = channel;
+
                             AudioRecord recorder = new AudioRecord(MediaRecorder.AudioSource.DEFAULT, mSampleRate, mChannelConfig, mAudioFormat, bufferSize);
+
                             if (recorder.getState() == AudioRecord.STATE_INITIALIZED) {
                                 return recorder;    // 적당한 설정값들로 생성된 Recorder 반환
                             }
@@ -144,79 +184,269 @@ public class MusicActivity extends Activity{
         }
         return null;                     // 적당한 설정값들을 찾지 못한 경우 Recorder를 찾지 못하고 null 반환
     }
-    // 실제 녹음한 data를 file에 쓰는 함수
-    private void writeAudioDataToFile() {
+    private void recordSoundWrite() {
+        //파일에 읽은 시계열 벡터를 차례대로 기록한다.
+        String savePath = Environment.getExternalStorageDirectory().getPath();
 
-        String sd = Environment.getExternalStorageDirectory().getAbsolutePath();
-        mPath= sd + "/record_audiorecord.pcm";// 녹음한 파일을 저장할 경로
-        short sData[] = new short[mBufferSize];
 
+        File file = new File(savePath+ "/answerRecord.txt");
+        try{
+            FileWriter fileWriter = new FileWriter(file);
+            for (int i = 0 ; i< vecList.size() ; i++) {
+                Log.v("vecList"+i , vecList.get(i)+"");
+                fileWriter.write(vecList.get(i)+"\n");
+            }
+            fileWriter.close();
+            Toast.makeText(getApplicationContext(),"file saved",Toast.LENGTH_SHORT).show();
+        }
+        catch (Exception e){
+            e.printStackTrace();
+        }
+        //FileOutputStream fos = new FileOutputStream();
+        //기록 후, 유클리디안 거리 비교
+    }
+    private void fileCompare(){
         try {
+            String savePath = Environment.getExternalStorageDirectory().getPath();
+            File file = new File(savePath+"/answerRecord.txt");
+            FileReader fileReader = new FileReader(file);
+            BufferedReader bufferedReader = new BufferedReader(fileReader);
+            String line = "";
+            int sum = 0;
+            File file2 = new File(savePath+ "/answerRecord4.txt");
 
-            fos = new FileOutputStream(mPath);
-            while (mIsRecording && valueReset == false) {
+            FileWriter fileWriter = new FileWriter(file2);
+            for (int i = 0 ; i< vecList.size() ; i++) {
+                Log.v("vecList"+i , vecList.get(i)+"");
+                fileWriter.write(vecList.get(i)+"\n");
+            }
+            fileWriter.close();
+            FileReader fileReader2 = new FileReader(file2);
+            BufferedReader bufferedReader2 = new BufferedReader(fileReader2);
 
-                //int read =0;
-                mRecorder.read(sData, 0, mBufferSize);
-                byte bData[] = short2byte(sData);
-               // fos.write(bData, 0, mBufferSize * mBytesPerElement);
-                //read=mRecorder.read(bData,0,mBufferSize * mBytesPerElement);
+            Toast.makeText(getApplicationContext(),"size"+vecList.size(),Toast.LENGTH_SHORT).show();
+            Iterator iterator = vecList.iterator();
+            String line2="";
+            int musicCount=0;
+            int[] data = new int[22];
+            int[] data2 =new int[22];
 
-                 fos.write(bData, 0, mBufferSize * mBytesPerElement);
-               // read=mRecorder.read(bData,0,mBufferSize * mBytesPerElement);
+            int[] index=new int[2000];
+            int[] index2=new int[2000];
+            int i=0;
+            double success=0.0;
+            double total =0.0;
+            while (((line = bufferedReader.readLine()) != null && (line2=bufferedReader2.readLine())!=null )) {
+               // int playMusic = Integer.parseInt(iterator.next()+"");
+               // int originalMusic =  Integer.parseInt(line);
+               // Double doublePlay = (double)playMusic;
+               // Double doubleOriginal = (double)originalMusic;
+               // int diffrent = (int)((doublePlay/doubleOriginal)*100);
+                //int diffrent = Integer.parseInt(((doublePlay/doubleOriginal)*100)+"");
 
+                index[musicCount]=Integer.parseInt(line);
+                index2[musicCount]=Integer.parseInt(line2);
 
-               /* if(read>0) {
-                    double[] absNormalizedSignal = calculateFFT(bData);
-                    if(countvalue==0){
-                        Log.d("jsontest","success");
-                    }
-                    for(int i=0;i<absNormalizedSignal.length;i++){
-                        //if(max<absNormalizedSignal[i]){
-                        //  max=absNormalizedSignal[i];
-                        //}
-                        try{
-                            jmusic.put(String.valueOf(countvalue),String.valueOf(absNormalizedSignal[i]));
+               /* int mode =0,mode2=0;
+                int max=Integer.MIN_VALUE;
+                int max2=Integer.MIN_VALUE;
+                data[i]=Integer.parseInt(line);
+                data2[i]=Integer.parseInt(line2);
+                i++;
+                if(i%22==0){
+                    for(int j=0;j<data.length;j++){
+                        if(data[j]>=100) {
+                            index[data[j] / 10]++;
                         }
-                        catch (Exception e){
-
+                        else if(data[j]<100) {
+                            index[data[j]-data[j]%10]++;
                         }
-                        timeList.put(String.valueOf(countvalue),String.valueOf(absNormalizedSignal[i]));
-                        countvalue++;
+                        if(data2[j]>=100) {
+                            index2[data2[j] / 10]++;
+                        }
+                        else if(data2[j]<100) {
+                            index2[data2[j]-data2[j]%10]++;
+                        }
                     }
-                    //  for(int i=0;i<absNormalizedSignal.length;i++) {
-                    //    Log.d(String.valueOf((int)(absNormalizedSignal[i])),"hihihihi");
-                    //}
-                    Log.d(String.valueOf(absNormalizedSignal.length),"lengthsize");
+                    for(int j=0;j<index.length;j++){
+                        if(max<index[j]){
+                            max = index[j];
+                            mode=j;
+                        }
+                        if(max2<index2[j]){
+                            max2=index2[j];
+                            mode2=j;
+                        }
+                    }
+                    if(Math.abs(mode-mode2)<6){
+                        success++;
+
+                    }
+                    else{
+                        fail++;
+                    }
+                    i=0;
                 }*/
+
+               // if(Math.abs(Integer.parseInt(line2)-Integer.parseInt(line))<11){
+               // }
+               // else {
+                 //   sum = sum + Math.abs(100-(int)((Double.parseDouble(line2 + "")/Double.parseDouble(line + ""))*100)-10);
+
+               // }
+                Log.d("buffervalue", line2);
+                musicCount++;
+
             }
-            if(valueReset ==true) {
-                fos.close();
+            int[] pianoFreq = {261,293,329,349,391,440,493};
+            for(musicCount=0;musicCount<index.length;musicCount++){
+                int idx = Arrays.binarySearch(pianoFreq,index[musicCount]);
+                if(idx>=0){
+                    try {
+                        if (index[musicCount]==index2[musicCount-3]||index[musicCount]==index2[musicCount-2]||index[musicCount]==index2[musicCount-1]||
+                                index[musicCount]==index2[musicCount]||index[musicCount]==index2[musicCount+1]||index[musicCount]==index2[musicCount+2]||
+                                index[musicCount]==index2[musicCount+3]||index[musicCount]==index2[musicCount-5]||index[musicCount]==index2[musicCount-4]||index[musicCount]==index2[musicCount+4]
+                                ||index[musicCount]==index2[musicCount+5]){
+                            success+=1;
+
+                        }
+                        else if(index[musicCount]==index2[musicCount-6]||index[musicCount]==index2[musicCount-7]||index[musicCount]==index2[musicCount+6]
+                                ||index[musicCount]==index2[musicCount+7]||index[musicCount]==index2[musicCount-8]||index[musicCount]==index2[musicCount-9]||index[musicCount]==index2[musicCount+8]
+                                ||index[musicCount]==index2[musicCount+9]||index[musicCount]==index2[musicCount-10]||index[musicCount]==index2[musicCount-11]||index[musicCount]==index2[musicCount+10]
+                                ||index[musicCount]==index2[musicCount+11]){
+                            success+=0.95;
+                        }
+                        else if(index[musicCount]==index2[musicCount-12]||index[musicCount]==index2[musicCount-13]||index[musicCount]==index2[musicCount+12]
+                                ||index[musicCount]==index2[musicCount+13]||index[musicCount]==index2[musicCount-14]||index[musicCount]==index2[musicCount-15]||index[musicCount]==index2[musicCount+14]
+                                ||index[musicCount]==index2[musicCount+15]||index[musicCount]==index2[musicCount-16]||index[musicCount]==index2[musicCount-17]||index[musicCount]==index2[musicCount+16]
+                                ||index[musicCount]==index2[musicCount+17]){
+                            success+=0.9;
+                        }
+                        else if(index[musicCount]==index2[musicCount-18]||index[musicCount]==index2[musicCount-19]||index[musicCount]==index2[musicCount+18]
+                                ||index[musicCount]==index2[musicCount+19]||index[musicCount]==index2[musicCount-20]||index[musicCount]==index2[musicCount-21]||index[musicCount]==index2[musicCount+20]
+                                ||index[musicCount]==index2[musicCount+21]||index[musicCount]==index2[musicCount-22]||index[musicCount]==index2[musicCount-23]||index[musicCount]==index2[musicCount+22]
+                                ||index[musicCount]==index2[musicCount+23]){
+                            success+=0.85;
+                        }
+                        else if(index[musicCount]==index2[musicCount-24]||index[musicCount]==index2[musicCount-25]||index[musicCount]==index2[musicCount+24]
+                                ||index[musicCount]==index2[musicCount+25]||index[musicCount]==index2[musicCount-26]||index[musicCount]==index2[musicCount-27]||index[musicCount]==index2[musicCount+26]
+                                ||index[musicCount]==index2[musicCount+27]||index[musicCount]==index2[musicCount-28]||index[musicCount]==index2[musicCount-29]||index[musicCount]==index2[musicCount+28]
+                                ||index[musicCount]==index2[musicCount+28]){
+                            success+=0.8;
+                        }
+                        else{
+                            success+=0.3;
+                        }
+                        total +=1;
+
+                    }
+                    catch (Exception e){
+
+                    }
+                }
             }
-        } catch (FileNotFoundException e) {
-            e.printStackTrace();
-        } catch (IOException e) {
-            e.printStackTrace();
+            Log.d("musicCount",index[1999]+"");
+            average = (int)((success / total)*100);
+
+            int pianoScore= 100-average;
+
+            Toast.makeText(getApplicationContext(),"t"+total+"s"+(int)success+"average"+average,Toast.LENGTH_SHORT).show();
+
+        }
+        catch (Exception e){
+
+
         }
     }
-    private byte[] short2byte(short[] sData) {
 
-        int shortArrsize = sData.length;
+    // 실제 녹음한 data를 file에 쓰는 함수
 
-        byte[] bytes = new byte[shortArrsize * 2];
-
-        for (int i = 0; i < shortArrsize; i++) {
-
-            bytes[i * 2] = (byte) (sData[i] & 0x00FF);
-
-            bytes[(i * 2) + 1] = (byte) (sData[i] >> 8);
-
-            sData[i] = 0;
-
+    private void writeAudioDataToFile() {
+        if(valueReset==false) {
+            String sd = Environment.getExternalStorageDirectory().getAbsolutePath();
+            mPath = sd + "/record_audiorecord.pcm";// 녹음한 파일을 저장할 경로
+            try {
+                fos = new FileOutputStream(mPath);
+            } catch (FileNotFoundException e) {
+                e.printStackTrace();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
         }
+        short sData[] = new short[mBufferSize];
 
+        while (mIsRecording) {
+
+            int read =0;
+            mRecorder.read(sData, 0, mBufferSize);
+            byte bData[] = short2byte(sData);
+            // fos.write(bData, 0, mBufferSize * mBytesPerElement);
+            //read=mRecorder.read(bData,0,mBufferSize * mBytesPerElement);
+            try {
+                fos.write(bData, 0, mBufferSize * mBytesPerElement);
+                //fos.write(sData, 0, mBufferSize);
+                // read=mRecorder.read(bData,0,mBufferSize * mBytesPerElement);
+            }
+            catch (Exception e){
+
+            }
+            //read = mRecorder.read(bData,0,mBufferSize * mBytesPerElement);
+
+
+           // if(read>0){
+
+                int length= bData.length/2;
+                int sampleSize = 8192;
+                while(sampleSize>length) sampleSize = sampleSize >> 1;
+
+                FrequencyCalculator frequencyCalculator = new FrequencyCalculator(sampleSize);
+                frequencyCalculator.feedData(bData,length);
+
+                double max = resizeNumber(frequencyCalculator.getFreq());
+                int[] data = {0,130,146,164,174,195,220,246,261,293,329,349,391,440,493,523,587,659,698,798,880,987};
+                int target = (int)max; //찾을값을 지정
+                int near = 0 ; //가까운값을 저장할 변수
+                int min = Integer.MAX_VALUE ; //차이값의 절대값의 최소값을 저장할변수
+                //초기값은 정수형에서 최대값;
+                //[2] 처리
+                for (int i = 0; i < data.length; i++) {
+                    int a = Math.abs((data[i] - target)); //Math.abs(값) : 절대값 구하는 함수
+                    //int a = Abs((data[i] - target));
+                    if(min > a){
+                        min =  a; //최소값 알고리즘
+                        near = data[i]; //최종적으로 가까운값
+                    }
+                }
+              //  double[] absNormalizedSignal = calculateFFT(bData);
+
+                if(max<1000&&max!=0) {
+                    vecList.add(near);
+                }
+
+         //   }
+        }
+            if(endValue ==true) {
+                try {
+                    fos.close();
+                }
+                catch (Exception e){
+                }
+            }
+
+    }
+    public double resizeNumber(double value) {
+        int temp = (int) (value * 10.0d);
+        return temp / 10.0d;
+    }
+    private byte[] short2byte(short[] sData) {
+        int shortArrsize = sData.length;
+        byte[] bytes = new byte[shortArrsize * 2];
+        for (int i = 0; i < shortArrsize; i++) {
+            bytes[i * 2] = (byte) (sData[i] & 0x00FF);
+            bytes[(i * 2) + 1] = (byte) (sData[i] >> 8);
+            sData[i] = 0;
+        }
         return bytes;
-
     }
 
     // 녹음을 중지하는 함수
@@ -259,24 +489,35 @@ public class MusicActivity extends Activity{
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data){
         if(resultCode==RESULT_OK){
+            if(requestCode==1){
             int value=data.getIntExtra("value",0);
             Toast.makeText(getApplicationContext(),"상태"+value,Toast.LENGTH_SHORT).show();
             if(value==1){
                 vv.start();
                 mIsRecording=true;
+                valueReset=true;
+                mRecordingThread = new Thread(new Runnable() {
+                    @Override
+                    public void run() {
+                        writeAudioDataToFile();
+                    }
+                }, "AudioRecorder Thread");
+                mRecordingThread.start();
             }
             else if(value==2){
                 stopRecording();
-                mIsRecording = false;
-                valueReset=true;
                 setting();
             }
-            else if(value==3){
+            else if(value==3) {
                 stopRecording();
                 mIsRecording = false;
-                valueReset=true;
-                Intent intent= new Intent(MusicActivity.this,MainActivity.class);
+                finish();
+                Intent intent = new Intent(MusicActivity.this, MainActivity.class);
                 startActivity(intent);
+            }
+
+            }
+            else if(requestCode==10){
                 finish();
             }
         }
@@ -284,8 +525,12 @@ public class MusicActivity extends Activity{
     }
     public double[] calculateFFT(byte[] bData)
     {
-        double mMaxFFTSample;
 
+
+        double sum=0.0;
+        int avg=0;
+        double mMaxFFTSample;
+        int count=0;
         double temp;
         Complex[] y;
         Complex[] complexSignal = new Complex[mBufferSize];
@@ -297,7 +542,6 @@ public class MusicActivity extends Activity{
         }
 
         y = FFT.fft(complexSignal); // --> Here I use FFT class
-
         mMaxFFTSample = 0.0;
         int mPeakPos = 0;
         for(int i = 0; i < (mBufferSize/2); i++)
@@ -308,57 +552,42 @@ public class MusicActivity extends Activity{
                 mMaxFFTSample = absSignal[i];
                 mPeakPos = i;
             }
+
+            sum+=absSignal[i];
+            count++;
         }
-        Log.d(String.valueOf(mMaxFFTSample),"maxfft");
+        avg=(int)sum/count;
+        //vecList.add(avg);
+
+        Log.d(mMaxFFTSample+"","maxfft");
         return absSignal;
     }
     // 녹음할 때 설정했던 값과 동일한 설정값들로 해당 파일을 재생하는 함수
     private void playWaveFile() {
-
         int minBufferSize = AudioTrack.getMinBufferSize(mSampleRate, mChannelConfig, mAudioFormat);
-
-        AudioTrack audioTrack = new AudioTrack(AudioManager.STREAM_VOICE_CALL, mSampleRate, mChannelConfig, mAudioFormat, minBufferSize, AudioTrack.MODE_STREAM);
-
+        AudioTrack audioTrack = new AudioTrack(AudioManager.STREAM_MUSIC, mSampleRate, mChannelConfig, mAudioFormat, minBufferSize, AudioTrack.MODE_STREAM);
         int count = 0;
-
         byte[] data = new byte[mBufferSize];
 
-
-
         try {
-
             FileInputStream fis = new FileInputStream(mPath);
-
             DataInputStream dis = new DataInputStream(fis);
-
             audioTrack.play();
 
-
-
             while ((count = dis.read(data, 0, mBufferSize)) > -1) {
-
                 audioTrack.write(data, 0, count);
-
+                System.out.println("1");
+                System.out.println(data);
             }
-
             audioTrack.stop();
-
             audioTrack.release();
-
             dis.close();
-
             fis.close();
-
         } catch (FileNotFoundException e) {
-
             e.printStackTrace();
-
         } catch (IOException e) {
-
             e.printStackTrace();
-
         }
-
     }
 
 

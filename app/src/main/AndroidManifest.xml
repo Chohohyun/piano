@@ -13,7 +13,8 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
-        <activity android:name=".MainActivity"
+        <activity
+            android:name=".MainActivity"
             android:screenOrientation="landscape">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -23,10 +24,23 @@
         </activity>
         <activity
             android:name=".MusicActivity"
-            android:screenOrientation="landscape"/>
-        <activity android:name=".PauseActivity"
+            android:screenOrientation="landscape" />
+
+        <activity
+            android:name=".ResultActivity"
+            android:screenOrientation="landscape" />
+        <activity
+            android:name=".PauseActivity"
             android:screenOrientation="landscape"
-            android:theme="@android:style/Theme.DeviceDefault.Light.Dialog"></activity>
+            android:theme="@android:style/Theme.DeviceDefault.Light.Dialog" />
+        <activity
+            android:name=".PreviewActivity"
+            android:screenOrientation="landscape"
+            android:theme="@android:style/Theme.DeviceDefault.Light.Dialog" />
+        <activity android:name=".ScoreActivity"></activity>
+        <activity android:name=".LoadingActivity"
+            android:theme="@android:style/Theme.NoTitleBar.Fullscreen"
+            android:screenOrientation="landscape" />
     </application>
 
 </manifest>
