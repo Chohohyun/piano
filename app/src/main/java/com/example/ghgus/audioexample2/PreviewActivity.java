@@ -2,7 +2,9 @@ package com.example.ghgus.audioexample2;
 
 
 import android.app.Activity;
+import android.content.Context;
 import android.content.Intent;
+import android.media.AudioManager;
 import android.media.MediaPlayer;
 import android.net.Uri;
 import android.os.Bundle;
@@ -18,12 +20,20 @@ public class PreviewActivity extends Activity {
     VideoView vv;
     int musicNumber=0;
     MediaController mc;
+
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         requestWindowFeature(Window.FEATURE_NO_TITLE);
         setContentView(R.layout.activity_preview);
         Intent inIntent = getIntent();
+        AudioManager am = (AudioManager)getSystemService(Context.AUDIO_SERVICE);
+
+        // 현재 볼륨 가져오기
+        int volume = am.getStreamMaxVolume(AudioManager.STREAM_MUSIC);
+        // volume이 15보다 작을 때만 키우기 동작
+        am.setStreamVolume(AudioManager.STREAM_MUSIC, volume-3, AudioManager.FLAG_PLAY_SOUND);
         musicNumber = inIntent.getIntExtra("musicNumber",0);
         vv = (VideoView) findViewById(R.id.vv);
         mc= new MediaController(PreviewActivity.this);

@@ -37,7 +37,6 @@
             android:name=".PreviewActivity"
             android:screenOrientation="landscape"
             android:theme="@android:style/Theme.DeviceDefault.Light.Dialog" />
-        <activity android:name=".ScoreActivity"></activity>
         <activity android:name=".LoadingActivity"
             android:theme="@android:style/Theme.NoTitleBar.Fullscreen"
             android:screenOrientation="landscape" />

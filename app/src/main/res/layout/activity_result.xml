@@ -3,6 +3,8 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/rl"
+    android:background="@drawable/notover"
     tools:context=".ResultActivity">
 
     <TextView
@@ -38,7 +40,7 @@
         android:layout_alignParentBottom="true"
         android:background="@drawable/oval2"
         android:gravity="center"
-        android:text="돌아가기"
+        android:text="메인으로"
         android:textColor="#7EC0EE"
         android:textSize="10pt"
         android:textStyle="bold"
@@ -52,7 +54,7 @@
         android:layout_alignParentBottom="true"
         android:background="@drawable/oval2"
         android:gravity="center"
-        android:text="다시듣기"
+        android:text="연주듣기"
         android:textColor="#7EC0EE"
         android:textSize="10pt"
         android:textStyle="bold"

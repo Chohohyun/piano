@@ -1,6 +1,7 @@
 package com.example.ghgus.audioexample2;
 
 import android.app.Activity;
+import android.content.Context;
 import android.content.Intent;
 import android.media.AudioFormat;
 import android.media.AudioManager;
@@ -25,6 +26,7 @@ import android.widget.VideoView;
 import org.json.JSONObject;
 
 import java.io.BufferedReader;
+import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.File;
 import java.io.FileInputStream;
@@ -33,6 +35,8 @@ import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.Map;
@@ -57,8 +61,8 @@ public class MusicActivity extends Activity{
     private final int[] mSampleRates = new int[] {44100, 22050, 11025, 8000};
     private final short[] mAudioFormats = new short[] {AudioFormat.ENCODING_PCM_16BIT, AudioFormat.ENCODING_PCM_8BIT};
     private final short[] mChannelConfigs = new short[] { AudioFormat.CHANNEL_IN_STEREO,AudioFormat.CHANNEL_IN_MONO};
-
-
+    private double time=0.0;
+    private String textpath="";
 
     // 위의 값들 중 실제 녹음 및 재생 시 선택된 설정값들을 저장
     private String result="";
@@ -84,13 +88,22 @@ public class MusicActivity extends Activity{
         setContentView(R.layout.activity_music);
         Intent intent = getIntent();
         musicNumber = intent.getIntExtra("musicNumber",0);
+        AudioManager am = (AudioManager)getSystemService(Context.AUDIO_SERVICE);
+
+        // 현재 볼륨 가져오기
+        int volume = am.getStreamVolume(AudioManager.STREAM_MUSIC); //volume은 0~15 사이어야 함
+        // volume이 0보다 클 때만 키우기 동작
+
+            am.setStreamVolume(AudioManager.STREAM_MUSIC, 0, AudioManager.FLAG_PLAY_SOUND);
+
         Log.d("여기까진","된다");
         setting();
 
         vv.setOnCompletionListener(new MediaPlayer.OnCompletionListener() {
             @Override
             public void onCompletion(MediaPlayer mp) {
-                Toast.makeText(getApplicationContext(),"hi",Toast.LENGTH_LONG).show();
+                time= mp.getDuration()/1000;
+                //Toast.makeText(getApplicationContext(),"hi",Toast.LENGTH_LONG).show();
                 endValue=true;
                 valueReset=true;
                 stopRecording();
@@ -105,9 +118,7 @@ public class MusicActivity extends Activity{
                 Log.d("recordertest","successs");
 
                 //Toast.makeText(getApplicationContext(),average,Toast.LENGTH_LONG).show();
-                Intent intent3 = new Intent(MusicActivity.this,ResultActivity.class);
-                intent3.putExtra("musicScore",average);
-                startActivityForResult(intent3,10);
+
             }
         });
     }//확인 버튼 클릭
@@ -188,16 +199,17 @@ public class MusicActivity extends Activity{
         //파일에 읽은 시계열 벡터를 차례대로 기록한다.
         String savePath = Environment.getExternalStorageDirectory().getPath();
 
-
         File file = new File(savePath+ "/answerRecord.txt");
         try{
             FileWriter fileWriter = new FileWriter(file);
-            for (int i = 0 ; i< vecList.size() ; i++) {
+            fileWriter.write(vecList.size()+"\n");
+            for (int i = 1 ; i< vecList.size() ; i++) {
                 Log.v("vecList"+i , vecList.get(i)+"");
                 fileWriter.write(vecList.get(i)+"\n");
             }
             fileWriter.close();
             Toast.makeText(getApplicationContext(),"file saved",Toast.LENGTH_SHORT).show();
+            Toast.makeText(getApplicationContext(),"size"+vecList.size(),Toast.LENGTH_SHORT).show();
         }
         catch (Exception e){
             e.printStackTrace();
@@ -205,157 +217,125 @@ public class MusicActivity extends Activity{
         //FileOutputStream fos = new FileOutputStream();
         //기록 후, 유클리디안 거리 비교
     }
+
+
     private void fileCompare(){
+
+        int[] index = new int[5000];
+        int[] index2 = new int[5000];
+        double success = 0.0;
+        double total = 0.0;
+        int musicCount = 0;
+        File file = new File(textpath);
         try {
             String savePath = Environment.getExternalStorageDirectory().getPath();
-            File file = new File(savePath+"/answerRecord.txt");
-            FileReader fileReader = new FileReader(file);
-            BufferedReader bufferedReader = new BufferedReader(fileReader);
+
+            //FileReader fileReader = new FileReader(data);
+            //BufferedReader bufferedReader = new BufferedReader(fileReader);
             String line = "";
             int sum = 0;
-            File file2 = new File(savePath+ "/answerRecord4.txt");
+
+
+            File file2 = new File(savePath + "/answerRecord4.txt");
 
             FileWriter fileWriter = new FileWriter(file2);
-            for (int i = 0 ; i< vecList.size() ; i++) {
-                Log.v("vecList"+i , vecList.get(i)+"");
-                fileWriter.write(vecList.get(i)+"\n");
+            fileWriter.write(vecList.size() + "\n");
+            for (int i = 1; i < vecList.size(); i++) {
+                fileWriter.write(vecList.get(i) + "\n");
             }
             fileWriter.close();
+
             FileReader fileReader2 = new FileReader(file2);
             BufferedReader bufferedReader2 = new BufferedReader(fileReader2);
 
-            Toast.makeText(getApplicationContext(),"size"+vecList.size(),Toast.LENGTH_SHORT).show();
             Iterator iterator = vecList.iterator();
-            String line2="";
-            int musicCount=0;
-            int[] data = new int[22];
-            int[] data2 =new int[22];
+            String line2 = "";
+            InputStream inputData = getResources().openRawResource(R.raw.originalgom3);
+            if(musicNumber==2){
+                inputData=getResources().openRawResource(R.raw.originalschool);
+            }
+            else if(musicNumber==3){
+                inputData=getResources().openRawResource(R.raw.originalstar);
+            }
 
-            int[] index=new int[2000];
-            int[] index2=new int[2000];
-            int i=0;
-            double success=0.0;
-            double total =0.0;
-            while (((line = bufferedReader.readLine()) != null && (line2=bufferedReader2.readLine())!=null )) {
-               // int playMusic = Integer.parseInt(iterator.next()+"");
-               // int originalMusic =  Integer.parseInt(line);
-               // Double doublePlay = (double)playMusic;
-               // Double doubleOriginal = (double)originalMusic;
-               // int diffrent = (int)((doublePlay/doubleOriginal)*100);
-                //int diffrent = Integer.parseInt(((doublePlay/doubleOriginal)*100)+"");
-
-                index[musicCount]=Integer.parseInt(line);
-                index2[musicCount]=Integer.parseInt(line2);
-
-               /* int mode =0,mode2=0;
-                int max=Integer.MIN_VALUE;
-                int max2=Integer.MIN_VALUE;
-                data[i]=Integer.parseInt(line);
-                data2[i]=Integer.parseInt(line2);
-                i++;
-                if(i%22==0){
-                    for(int j=0;j<data.length;j++){
-                        if(data[j]>=100) {
-                            index[data[j] / 10]++;
-                        }
-                        else if(data[j]<100) {
-                            index[data[j]-data[j]%10]++;
-                        }
-                        if(data2[j]>=100) {
-                            index2[data2[j] / 10]++;
-                        }
-                        else if(data2[j]<100) {
-                            index2[data2[j]-data2[j]%10]++;
-                        }
+            BufferedReader bufferedReader3= new BufferedReader(new InputStreamReader(inputData,"EUC_KR"));
+            while(true){
+                String string= bufferedReader3.readLine();
+                    if(string != null){
+                       index[musicCount]=Integer.parseInt(string);
+                    }else{
+                        break;
                     }
-                    for(int j=0;j<index.length;j++){
-                        if(max<index[j]){
-                            max = index[j];
-                            mode=j;
-                        }
-                        if(max2<index2[j]){
-                            max2=index2[j];
-                            mode2=j;
-                        }
-                    }
-                    if(Math.abs(mode-mode2)<6){
-                        success++;
+                    musicCount++;
+                }
 
-                    }
-                    else{
-                        fail++;
-                    }
-                    i=0;
-                }*/
-
-               // if(Math.abs(Integer.parseInt(line2)-Integer.parseInt(line))<11){
-               // }
-               // else {
-                 //   sum = sum + Math.abs(100-(int)((Double.parseDouble(line2 + "")/Double.parseDouble(line + ""))*100)-10);
-
-               // }
-                Log.d("buffervalue", line2);
+            int i = 0;
+           /* while (((line = bufferedReader.readLine()) != null)) {
+                index[musicCount] = Integer.parseInt(line);
                 musicCount++;
+            }*/
+            musicCount = 0;
+            while (((line2 = bufferedReader2.readLine()) != null)) {
+                index2[musicCount] = Integer.parseInt(line2);
+                musicCount++;
+            }
+        }
+            catch(Exception e){
 
             }
-            int[] pianoFreq = {261,293,329,349,391,440,493};
-            for(musicCount=0;musicCount<index.length;musicCount++){
+            double original = (index[0]/time)*0.75;
+            double play = (index2[0]/time)*0.75;
+            int[] pianoFreq = {261,293,329,349,391,440,493,523,587,659,698,798,880,987};
+
+            for(musicCount=1;musicCount<index.length;musicCount++){
                 int idx = Arrays.binarySearch(pianoFreq,index[musicCount]);
                 if(idx>=0){
-                    try {
-                        if (index[musicCount]==index2[musicCount-3]||index[musicCount]==index2[musicCount-2]||index[musicCount]==index2[musicCount-1]||
-                                index[musicCount]==index2[musicCount]||index[musicCount]==index2[musicCount+1]||index[musicCount]==index2[musicCount+2]||
-                                index[musicCount]==index2[musicCount+3]||index[musicCount]==index2[musicCount-5]||index[musicCount]==index2[musicCount-4]||index[musicCount]==index2[musicCount+4]
-                                ||index[musicCount]==index2[musicCount+5]){
-                            success+=1;
+                    total+=1;
+                    double checkPlay=(double)(musicCount*index2[0])/(double)index[0];
+                    int intCheck= (int)Math.round(checkPlay);
+                    int c=0;
+                    int check2=0;
+                        while (c < play) {
+                            if (c % 2 == 1) {
+                                check2 += c;
+                            } else {
+                                check2 -= c;
+                            }
+                            if(intCheck+check2<1 || intCheck+check2>index2[0]){
+                                total--;
+                                break;
+                            }
+                            if (index[musicCount] == index2[intCheck + check2]) {
 
+                                if (((double) c / (double) play) < 0.3) {
+                                    success += 1;
+                                } else if (((double) c / (double) play) < 0.6) {
+                                    success += 0.9;
+                                } else if (((double) c / (double) play) < 1) {
+                                    success += 0.7;
+                                }
+                                break;
+                            }
+                            c++;
                         }
-                        else if(index[musicCount]==index2[musicCount-6]||index[musicCount]==index2[musicCount-7]||index[musicCount]==index2[musicCount+6]
-                                ||index[musicCount]==index2[musicCount+7]||index[musicCount]==index2[musicCount-8]||index[musicCount]==index2[musicCount-9]||index[musicCount]==index2[musicCount+8]
-                                ||index[musicCount]==index2[musicCount+9]||index[musicCount]==index2[musicCount-10]||index[musicCount]==index2[musicCount-11]||index[musicCount]==index2[musicCount+10]
-                                ||index[musicCount]==index2[musicCount+11]){
-                            success+=0.95;
-                        }
-                        else if(index[musicCount]==index2[musicCount-12]||index[musicCount]==index2[musicCount-13]||index[musicCount]==index2[musicCount+12]
-                                ||index[musicCount]==index2[musicCount+13]||index[musicCount]==index2[musicCount-14]||index[musicCount]==index2[musicCount-15]||index[musicCount]==index2[musicCount+14]
-                                ||index[musicCount]==index2[musicCount+15]||index[musicCount]==index2[musicCount-16]||index[musicCount]==index2[musicCount-17]||index[musicCount]==index2[musicCount+16]
-                                ||index[musicCount]==index2[musicCount+17]){
-                            success+=0.9;
-                        }
-                        else if(index[musicCount]==index2[musicCount-18]||index[musicCount]==index2[musicCount-19]||index[musicCount]==index2[musicCount+18]
-                                ||index[musicCount]==index2[musicCount+19]||index[musicCount]==index2[musicCount-20]||index[musicCount]==index2[musicCount-21]||index[musicCount]==index2[musicCount+20]
-                                ||index[musicCount]==index2[musicCount+21]||index[musicCount]==index2[musicCount-22]||index[musicCount]==index2[musicCount-23]||index[musicCount]==index2[musicCount+22]
-                                ||index[musicCount]==index2[musicCount+23]){
-                            success+=0.85;
-                        }
-                        else if(index[musicCount]==index2[musicCount-24]||index[musicCount]==index2[musicCount-25]||index[musicCount]==index2[musicCount+24]
-                                ||index[musicCount]==index2[musicCount+25]||index[musicCount]==index2[musicCount-26]||index[musicCount]==index2[musicCount-27]||index[musicCount]==index2[musicCount+26]
-                                ||index[musicCount]==index2[musicCount+27]||index[musicCount]==index2[musicCount-28]||index[musicCount]==index2[musicCount-29]||index[musicCount]==index2[musicCount+28]
-                                ||index[musicCount]==index2[musicCount+28]){
-                            success+=0.8;
-                        }
-                        else{
-                            success+=0.3;
-                        }
-                        total +=1;
 
-                    }
-                    catch (Exception e){
 
-                    }
                 }
             }
             Log.d("musicCount",index[1999]+"");
-            average = (int)((success / total)*100);
+            average = (int)Math.round((success / total)*100);
 
             int pianoScore= 100-average;
 
-            Toast.makeText(getApplicationContext(),"t"+total+"s"+(int)success+"average"+average,Toast.LENGTH_SHORT).show();
+           // Toast.makeText(getApplicationContext(),"t"+total+"s"+(int)success+"average"+average,Toast.LENGTH_SHORT).show();
 
+
+        try{
+        Intent intent3 = new Intent(MusicActivity.this, ResultActivity.class);
+        intent3.putExtra("musicScore", average);
+        startActivityForResult(intent3, 10);
         }
-        catch (Exception e){
-
-
+        catch(Exception e) {
         }
     }
 
@@ -419,9 +399,9 @@ public class MusicActivity extends Activity{
                 }
               //  double[] absNormalizedSignal = calculateFFT(bData);
 
-                if(max<1000&&max!=0) {
+               // if(max<1000) {
                     vecList.add(near);
-                }
+               // }
 
          //   }
         }
@@ -466,7 +446,7 @@ public class MusicActivity extends Activity{
             return false;
         }
         if ((event.getAction() == MotionEvent.ACTION_DOWN)) {
-            Toast.makeText(getApplicationContext(),"touch",Toast.LENGTH_LONG).show();
+            //Toast.makeText(getApplicationContext(),"touch",Toast.LENGTH_LONG).show();
            // mc.hide();
             vv.pause();
             popUpMenu();
@@ -491,7 +471,7 @@ public class MusicActivity extends Activity{
         if(resultCode==RESULT_OK){
             if(requestCode==1){
             int value=data.getIntExtra("value",0);
-            Toast.makeText(getApplicationContext(),"상태"+value,Toast.LENGTH_SHORT).show();
+            //Toast.makeText(getApplicationContext(),"상태"+value,Toast.LENGTH_SHORT).show();
             if(value==1){
                 vv.start();
                 mIsRecording=true;
@@ -509,11 +489,10 @@ public class MusicActivity extends Activity{
                 setting();
             }
             else if(value==3) {
+                endValue=true;
+                valueReset=true;
                 stopRecording();
-                mIsRecording = false;
                 finish();
-                Intent intent = new Intent(MusicActivity.this, MainActivity.class);
-                startActivity(intent);
             }
 
             }
@@ -523,7 +502,7 @@ public class MusicActivity extends Activity{
         }
 
     }
-    public double[] calculateFFT(byte[] bData)
+    /*public double[] calculateFFT(byte[] bData)
     {
 
 
@@ -561,34 +540,8 @@ public class MusicActivity extends Activity{
 
         Log.d(mMaxFFTSample+"","maxfft");
         return absSignal;
-    }
-    // 녹음할 때 설정했던 값과 동일한 설정값들로 해당 파일을 재생하는 함수
-    private void playWaveFile() {
-        int minBufferSize = AudioTrack.getMinBufferSize(mSampleRate, mChannelConfig, mAudioFormat);
-        AudioTrack audioTrack = new AudioTrack(AudioManager.STREAM_MUSIC, mSampleRate, mChannelConfig, mAudioFormat, minBufferSize, AudioTrack.MODE_STREAM);
-        int count = 0;
-        byte[] data = new byte[mBufferSize];
+    }*/
 
-        try {
-            FileInputStream fis = new FileInputStream(mPath);
-            DataInputStream dis = new DataInputStream(fis);
-            audioTrack.play();
-
-            while ((count = dis.read(data, 0, mBufferSize)) > -1) {
-                audioTrack.write(data, 0, count);
-                System.out.println("1");
-                System.out.println(data);
-            }
-            audioTrack.stop();
-            audioTrack.release();
-            dis.close();
-            fis.close();
-        } catch (FileNotFoundException e) {
-            e.printStackTrace();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
 
 
 
